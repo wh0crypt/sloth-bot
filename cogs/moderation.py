@@ -995,7 +995,7 @@ class Moderation(*moderation_cogs):
 
         for member in members:
             if ctx.guild.get_member(member.id):
-                await self._mute_callback(ctx, member, reason)
+                await self.apply_to_linked(ctx, self._mute_callback, member, reason)
             else:
                 await ctx.send(f"** The user `{member}` is not on the server**")
 
@@ -1114,7 +1114,7 @@ class Moderation(*moderation_cogs):
         if time == None:
             for member in members:
                 if ctx.guild.get_member(member.id):
-                    await self._unmute_callback(ctx, member)
+                    await self.apply_to_linked(ctx, self._unmute_callback, member)
                 else:
                     await ctx.send(f"** The user `{member}` is not on the server**")
         else:
@@ -1153,7 +1153,7 @@ class Moderation(*moderation_cogs):
         :param member: The @ or the ID of the user to mute.
         :param reason: The reason for the mute. """
 
-        await self._unmute_callback(ctx, user)
+        await self.apply_to_linked(ctx, self._unmute_callback, user)
 
     async def _unmute_callback(self, ctx, member: discord.Member = None) -> None:
         """ (MOD) Unmutes a member.
