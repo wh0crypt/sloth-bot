@@ -3,7 +3,7 @@ import asyncio
 import os
 import re
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union, Callable
 
 # import.thirdparty
 import discord
@@ -508,6 +508,26 @@ class Moderation(*moderation_cogs):
 
         if smessage := special_channels.get(ctx.channel.id):
             await ctx.send(smessage)
+
+    # Applies an action to all linked accounts of a user
+    async def apply_to_linked(self, ctx, func: Callable[..., None], member: Union[discord.Member, discord.User] = None, *args, **kwargs) -> None:
+        """ Applies a function to all linked accounts of a user.
+        :param ctx: The command context.
+        :param member: The member to apply the function to.
+        :param func: The function to apply.
+        :param args: The function arguments.
+        :param kwargs: The function keyword arguments. """
+
+        # Gets all linked accounts
+        linked_accounts = await self.get_fake_accounts(member.id)
+        if linked_accounts:
+            for account in linked_accounts:
+                account_id = account[1]
+                user = ctx.guild.get_member(account_id)
+                if user:
+                    await func(ctx, user, *args, **kwargs)        
+        if member:
+            await func(ctx, member, *args, **kwargs)
 
     # Warns a member
     @commands.command()
