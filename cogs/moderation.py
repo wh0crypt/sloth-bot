@@ -1521,7 +1521,7 @@ class Moderation(*moderation_cogs):
             general_embed.set_author(name=f'{member} has been banned', icon_url=member.display_avatar)
             await ctx.send(embed=general_embed)
             try:
-                await member.send(content="""Hello,
+                content="""Hello,
 
 We regret to inform you that you have been banned from our Discord server. Our moderation team has reviewed your behavior and has determined that it violates our server rules.
 
@@ -1533,11 +1533,25 @@ The appeal process is simple, just join the server below and fill out the form a
 
 https://discord.gg/V5XPMyTyrj
 
-We appreciate your understanding and look forward to hearing from you. """, embed=general_embed)
+We appreciate your understanding and look forward to hearing from you. """
+                async def send_ban_message(ctx, linked_member, *args, **kwargs):
+                    try:
+                        await linked_member.send(content=content, embed=general_embed)
+                    except:
+                        pass
+
+                await self.apply_to_linked(ctx, send_ban_message, member)
             except Exception:
                 pass
             try:
-                await member.ban(delete_message_seconds=604800, reason=reason)
+                async def ban_linked_member(ctx, linked_member, reason, *args, **kwargs):
+                    try:
+                        await linked_member.ban(delete_message_seconds=604800, reason=reason)
+                    except Exception:
+                        await ctx.send('**You cannot ban {linked_member}!**', delete_after=3)
+                        raise Exception
+                
+                await self.apply_to_linked(ctx, ban_linked_member, member, reason)
             except Exception:
                 await ctx.send('**You cannot do that!**', delete_after=3)
             else:
