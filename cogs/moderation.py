@@ -582,6 +582,7 @@ class Moderation(*moderation_cogs):
         :param reason: The reason for warning one or all users. (Optional)"""
         
         if not message:
+            
             await self._easy_warn_callback(ctx=ctx, warn_type="hwarn")
         else:
             await self._warn_callback(ctx=ctx, message=message, warn_type="hwarn")
@@ -661,8 +662,7 @@ class Moderation(*moderation_cogs):
                     ## Check warn type
                     warn_msg, infr = await self.get_warn_type(warn_type)
                     warn_desc = f'**Reason:** {reason}'
-                    user_infractions = await self.get_user_infractions(member.id)
-                    hours, days, weeks, ban = await self.get_timeout_time(ctx, member, await self.get_timeout_warns(infr, user_infractions))
+                    hours, days, weeks, ban = await self.get_timeout_time(ctx, member, await self.get_timeout_warns(ctx, infr, member))
                     if ban:
                         warn_desc += '\n**User has exceeded the maximum warn limit within 6 months and will be banned!**'
                     else:
@@ -728,7 +728,7 @@ class Moderation(*moderation_cogs):
                         except:
                             pass
                     else:
-                        await self.timeout(ctx, member, warn_type, user_infractions)
+                        await self.timeout(ctx, member, warn_type)
                 else:
                     await ctx.send(f"**The user `{member}` is not on the server**", delete_after = 5)
     
@@ -743,17 +743,31 @@ class Moderation(*moderation_cogs):
         elif warn_type == "hwarn":
             return "heavily ", "hwarn"
 
-    async def get_timeout_warns(self, warn_type: str, infractions: List[List[Union[str, int]]]) -> int:
+    async def get_timeout_warns(self, ctx, warn_type: str, member: discord.Member) -> int:
         """Returns the number of total warns that user has taking all types of warns.
         :param warn_type: The warn type.
-        :param infractions: The list of all infractions from a user. """
+        :param member: The member to get the warns from. """
 
         weight_map = {
             "lwarn": 0.5,
             "warn": 1,
             "hwarn": 2
         }
+        
+        infractions = list(await self.get_user_infractions(member.id))
+
+        async def accumulate_infractions(ctx, linked_member):
+            nonlocal infractions
+            linked_infractions = await self.get_user_infractions(linked_member.id)
+            infractions.extend(linked_infractions)
+
+        infractions = list(map(list, set(map(tuple, infractions))))
+
+        await self.apply_to_linked(ctx, accumulate_infractions, member)
+        
         warns = await self.get_warns(infractions)
+        warns = list(map(list, set(map(tuple, warns))))
+        print(f"Warns: {warns}")
         lwarns = sum(1 for w in warns if w[1] == "lwarn")
         total = sum(weight_map[w[1]] for w in warns) + weight_map[warn_type]
         if lwarns % 2 > 0 and warn_type != "lwarn":
@@ -790,7 +804,7 @@ class Moderation(*moderation_cogs):
             index = 0
         return weight_map[index]
 
-    async def timeout(self, ctx: commands.Context, member: discord.Member, warn_type: str, infractions: List[List[Union[str, int]]]) -> None:
+    async def timeout(self, ctx: commands.Context, member: discord.Member, warn_type: str) -> None:
         """Times out a user based on their number of warnings.
         :param ctx: The command context.
         :param member: The member to timeout.
@@ -803,7 +817,8 @@ class Moderation(*moderation_cogs):
         if muted_role in member.roles:
             await self._unmute_callback(ctx, member)
           
-        warns = await self.get_timeout_warns(warn_type, infractions)
+        warns = await self.get_timeout_warns(ctx, warn_type, member)
+        print(f"Warns: {warns}")
         hours, days, weeks, ban = await self.get_timeout_time(ctx, member, warns)
         
         if hours == 0 and days == 0 and weeks == 0:
@@ -812,13 +827,14 @@ class Moderation(*moderation_cogs):
         timedout_role = discord.utils.get(ctx.guild.roles, id=timedout_role_id)
         if timedout_role not in member.roles:
             await member.add_roles(timedout_role)
-        
+        print(f"Timeout duration: {weeks} weeks, {days} days, {hours} hours")
         timeout_reason = f"{int(warns)} warnings"
         timeout_duration = sum([
             weeks * 604800, # 1 week = 604800 seconds
             days * 86400,   # 1 day = 86400 seconds
             hours * 3600    # 1 hour = 3600 seconds
         ])
+        print(f"Timeout duration: {timeout_duration/3600} hours")
         try:
             current_ts = await utils.get_timestamp() + timeout_duration
             timedout_until = datetime.fromtimestamp(current_ts)
