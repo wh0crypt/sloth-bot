@@ -46,6 +46,9 @@ in_a_vc_role_id: int = int(os.getenv('IN_A_VC_ROLE_ID', 123))
 allowed_roles = [owner_role_id, admin_role_id, mod_role_id, *patreon_roles.keys(), int(os.getenv('BOOSTER_ROLE_ID', 123))]
 teacher_role_id = int(os.getenv('TEACHER_ROLE_ID', 123))
 event_manager_role_id = int(os.getenv('EVENT_MANAGER_ROLE_ID', 123))
+event_host_role_id = int(os.getenv('EVENT_HOST_ROLE_ID', 123))
+debate_organizer_role_id = int(os.getenv('DEBATE_ORGANIZER_ROLE_ID', 123))
+giveaway_manager_role_id = int(os.getenv('GIVEAWAY_MANAGER_ROLE_ID', 123))
 
 # variables.category
 popular_lang_cat_id = int(os.getenv('LANGUAGES_CAT_ID', 123))
@@ -1147,7 +1150,7 @@ class Tools(commands.Cog):
 			await ctx.respond(f"**You got moved to {channel.mention}!**")
 
 	@commands.command()
-	@utils.is_allowed([*allowed_roles, teacher_role_id, analyst_debugger_role_id], throw_exc=True)
+	@utils.is_allowed([*allowed_roles, teacher_role_id, analyst_debugger_role_id, event_manager_role_id, event_host_role_id, debate_organizer_role_id, giveaway_manager_role_id], throw_exc=True)
 	async def join(self, ctx, channel: Optional[discord.VoiceChannel]) -> None:
 		""" (Patreon) Joins a language channel
 		:param voice_channel: ID of the language voice channel
